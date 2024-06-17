@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         duifene-download
-// @version      0.0.1
+// @version      0.1.1
 // @description  duifene 对分易课程资源下载
 // @author       WiSHao
 // @match        https://www.duifene.com/_FileManage/PC/StFileManage.aspx
@@ -55,15 +55,13 @@
         const fileListArray = Array.from(fileListNode);
         let noDownloading = false;
         fileListArray.forEach((item) => {
-            const textDOM = item.querySelector('div.action > div > span');
-            if (!textDOM) return;
-            if (textDOM.textContent === '禁止下载') {
-                noDownloading = true;
-                textDOM.innerHTML = '草泥马我就要下载';
-                textDOM.style.color = 'red';
-                textDOM.style.cursor = 'pointer';
-                textDOM.addEventListener('click', () => download(`https://fs.duifene.com${item.dataset.path}`));
+            // 获取带下载功能那块的div
+            const actionDOM = item.querySelector('.action');
+            if (!actionDOM || !item.dataset.path) {
+                noDownloading = false;
+                return;
             }
+            noDownloading = setDownLoadButton(actionDOM, item.dataset.path);
         });
 
         if (!noDownloading) {
@@ -73,25 +71,68 @@
         alert('确实有禁止下载，已解开');
     }
 
+    function setDownLoadButton(actionDOM, downloadPath) {
+        // 遍历其中的所有元素
+        const elements = actionDOM.querySelectorAll('*');
+        for (let i = 0; i < elements.length; i++) {
+            let element = elements[i];
+            // 检查所有属性
+            for (let j = 0; j < element.attributes.length; j++) {
+                let attr = element.attributes[j];
+                if (attr.value.includes('禁止')) {
+                    console.log(`找到属性包含'禁止'的元素`, element);
+                    element.innerHTML = '草泥马我就要下载';
+                    element.style.color = 'red';
+                    element.style.cursor = 'pointer';
+                    element.addEventListener('mouseenter', function () {
+                        element.style.textDecoration = 'underline';
+                    });
+                    element.addEventListener('mouseleave', function () {
+                        element.style.textDecoration = 'none';
+                    });
+                    element.addEventListener('click', () => download(downloadPath));
+                    return true;
+                }
+            }
+            // 检查文本内容
+            if (element.textContent.includes('禁止')) {
+                console.log(`找到属性包含'禁止'的元素`, element);
+                element.innerHTML = '草泥马我就要下载';
+                element.style.color = 'red';
+                element.style.cursor = 'pointer';
+                element.addEventListener('mouseenter', function () {
+                    element.style.textDecoration = 'underline';
+                });
+                element.addEventListener('mouseleave', function () {
+                    element.style.textDecoration = 'none';
+                });
+                element.addEventListener('click', () => download(downloadPath));
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // 批量下载函数
     function autoDownload() {
         try {
             const fileListNode = document.querySelectorAll('#FilesList > div');
             const fileListArray = Array.from(fileListNode);
-            let autoDownloading = false;
             if (fileListArray.length === 0) {
                 alert('没有可下载的文件');
                 return;
             }
             alert('开始批量下载文件');
             fileListArray.forEach((item, index) => {
-                const textDOM = item.querySelector('div.action > div > span');
-                if (!textDOM) return;
+                // 获取带下载功能那块的div
+                const actionDOM = item.querySelector('.action');
+                if (!actionDOM || !item.dataset.path) {
+                    return;
+                }
                 setTimeout(() => {
-                    if (!textDOM.textContent) return;
-                    autoDownloading = true;
                     console.log(`${index}号文件已开始下载`);
-                    download(`https://fs.duifene.com${item.dataset.path}`);
+                    download(item.dataset.path);
                 }, index * 1000);
             });
         } catch (error) {
@@ -117,7 +158,12 @@
         btn.style.cursor = 'pointer';
         btn.style.position = 'absolute';
         btn.style.left = '200px';
-
+        btn.addEventListener('mouseenter', function () {
+            btn.style.backgroundColor = '#4BC4D0';
+        });
+        btn.addEventListener('mouseleave', function () {
+            btn.style.backgroundColor = '#8CF9FB';
+        });
         ele.appendChild(btn);
         btn.addEventListener('click', () => todo(ele));
     }
@@ -138,15 +184,20 @@
         btn.style.cursor = 'pointer';
         btn.style.position = 'absolute';
         btn.style.left = '340px';
-
+        btn.addEventListener('mouseenter', function () {
+            btn.style.backgroundColor = '#4BC4D0';
+        });
+        btn.addEventListener('mouseleave', function () {
+            btn.style.backgroundColor = '#8CF9FB';
+        });
         ele.appendChild(btn);
         btn.addEventListener('click', autoDownload);
     }
 
     // 页面加载完毕后执行入口
     window.addEventListener('load', () => {
-        waitForElement('#filemanageAction', setDownLoad);
-        waitForElement('#filemanageAction', allDownLoad);
+        waitForElement('.btnGroup', setDownLoad);
+        waitForElement('.btnGroup', allDownLoad);
         waitForElement('#FilesList > div:nth-child(1) > div.fileName > a', todo);
     });
 })();
